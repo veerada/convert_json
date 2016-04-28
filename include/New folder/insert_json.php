@@ -6,54 +6,14 @@ if(!empty($_POST["Submit"])){
 		$type= strrchr($filename,".");
 		if($type==".json"||$type==".js"){
 			$date_file=(date("Y-m-d"))."_".((date("H"))+6).".".(date("i"));
-			$date_upload=(date("Y-m-d"))." ".((date("H"))+6).":".(date("i"));
+			$date_upload=(date("Y-m-d"))."_".((date("H"))+6).":".(date("i"));
 			$filename_copy =$date_file."_".$filename;
 			$type= strrchr($filename,".");
 			copy($_FILES["import_file"]["tmp_name"],"json/".$filename_copy);
 			$json_url = "json/$filename_copy";
 			$json = file_get_contents($json_url);
 			$data = json_decode($json, TRUE);
-			$lastview_time=substr($data['dateLastView'],11,8);
-			$lastview_date=substr($data['dateLastView'],0,10);
-			$lastview_time_hour =substr($lastview_time,0,2);
-			$lastview_time_minute=substr($lastview_time,3,2);
-			$lastview_time_second=substr($lastview_time,6,2);
-			$lastview_date_year =substr($lastview_date,0,4);
-			$lastview_date_month =substr($lastview_date,5,2);
-			$lastview_date_day =substr($lastview_date,8,2);
-
-			$lastview_time_hour+=7;
-			if($lastview_time_hour>=24){
-				$lastview_time_hour=0;
-				$lastview_date_day++;
-			}
-
-			$query_month =mysql_query("SELECT day_amount FROM month WHERE month_id='$lastview_date_month'")or die(mysql_error());
-			list($day_amount)=mysql_fetch_row($query_month);
-			if($lastview_date_year%4==0){
-				if($lastview_date_month==2){
-					$day_amount=29;
-				}
-			}else{
-				if($lastview_date_month==2){
-					$day_amount=28;
-				}
-			}
-
-			if($lastview_date_day>$day_amount){
-				$lastview_date_day=1;
-				$lastview_date_month++;
-			}
-
-			if($lastview_date_month>12){
-				$lastview_date_month=1;
-				$lastview_date_year++;
-			}
-			$filename = str_replace("'", "&#39;", $filename);
-			$filename_copy = str_replace("'", "&#39;", $filename_copy);
-
-			
-			mysql_query("INSERT INTO history VALUES('','$filename','$filename_copy','$data[name]','$date_upload','$lastview_date_year-$lastview_date_month-$lastview_date_day $lastview_time_hour:$lastview_time_minute:$lastview_time_second')")or die(mysql_error());
+			mysql_query("INSERT INTO history VALUES('','$filename','$filename_copy','$data[name]','$date_upload')")or die(mysql_error());
 
 			$file = mysql_query("SELECT file_id FROM history ORDER BY file_id DESC")or die(mysql_error());
 			list($file_id)=mysql_fetch_row($file);
@@ -71,36 +31,43 @@ if(!empty($_POST["Submit"])){
 						$lists_closed[$id] = $value['name'];
 					}
 			}
+			$c=0;
 			foreach ($data['members'] as $value) {
 					$id=$value['id'];
 					$member_fullname[$id] = $value['fullName'];
-					$member_initials[$id] = $value['initials'];
+					$member_initials[$c] = $value['initials'];
+					$member_fullname2[$c] = $value['fullName'];
+					$c++;
 			}
-			
-// ----------------- เพิ่มข้อมูลผู้ใช้จาก trello ไปยัง database ------------------------
-			$query_member=mysql_query("SELECT member_fullname FROM members")or die(mysql_error());
-			$count_memner_db = mysql_num_rows($query_member);
-			if($count_memner_db!=count($member_fullname)){
-				if(count($member_fullname)>$count_memner_db){
-					$count_insert_member=count($member_fullname)-$count_memner_db;
+
+			$sql_fullname = array();
+			$sql_selectmember = mysql_query("SELECT COUNT(member_fullname) FROM members")or die(mysql_error());
+			list($total_fullname)=mysql_fetch_row($sql_selectmember);
+			if($total_fullname!=count($member_fullname2)){
+				while (list($fullname_member) = mysql_fetch_row($sql_selectmember)) {
+					array_push($sql_fullname, $fullname_member);
+				}
+				if($total_fullname<count($member_fullname2)){
 					$add_member = "INSERT INTO members VALUES";
-					$add=1;
-					foreach ($member_fullname as $key => $value) {
-						$query_member=mysql_query("SELECT member_fullname FROM members WHERE member_fullname='$member_fullname[$key]'")or die(mysql_error());
-						list($select_member)=mysql_fetch_row($query_member);
-						$initials = $member_initials[$key];
-						if($select_member!=$value){
-							$add_member.="('','$initials','$value','$value','')";
-							$add++;
-							if($add<=$count_insert_member){
+					
+						foreach ($member_fullname2 as $key_file => $value_file) {
+							$doubly = 0;
+							foreach ($sql_fullname as $key_sql => $value_sql) {
+								if($value_sql==$value_file){
+									$doubly = 1;
+								}
+							}
+							if($doubly == 0){
+								$add_member.="('$member_initials[$key_file]','$member_fullname2[$key_file]','$member_fullname2[$key_file]')";
+								if($key_file<(count($member_fullname2)-1)){
 								$add_member.=",";
+								}
 							}
 						}
-					}
-					mysql_query($add_member)or die("mysql_error()");
-				}			
+					echo "$add_member";
+					mysql_query($add_member)or die(mysql_error());
+				}
 			}
-			
 
 			$cards_name=array();
 			$cards_list=array();
@@ -164,7 +131,7 @@ if(!empty($_POST["Submit"])){
 
 			$number=1;
 			for($i=0;$i<count($cards_name);$i++){
-				
+				if($cards_list[$i]!=""){
 					$str=explode(" ",$cards_name[$i],5);
 					$point=str_replace("(","",$str[0]);
 					$point =str_replace(")","",$point);
@@ -176,13 +143,13 @@ if(!empty($_POST["Submit"])){
 						if(empty($str[4])){
 							$str[4]="";
 						}
+						if(empty($str[2])){
+							$str[2]="";
+						}
 
 						$string3 =$str[3];
 						$string4 = $str[4];
 						$str[4] = $string3." ".$string4;
-						if(empty($str[2])){
-							$str[2]="";
-						}
 						$str[3] = $str[2];
 						$str[2] = $str[1]; 
 						$str[1] = $point;
@@ -268,30 +235,13 @@ if(!empty($_POST["Submit"])){
 					}else{
 						$value_card = substr($cards_name[$i],3);
 					}
-					if($cards_list[$i]!=""){
-					switch (substr($cards_list[$i], 0, 4)) {
-						case "Blac": $value_list = "Blacklog";
-							break;
-						case "Chec": $value_list = "Checkin";
-							break;
-						case "Doin": $value_list = "Doing";
-							break;
-						case "Test": $value_list = "Tester";
-							break;
-						case "DONE"||"Done": $value_list = "Done";
-							break;		
-						default:
-							$value_list = $cards_list[$i];
-							break;
-					}
-					}
-					$value_card = str_replace("'", "&#39;", $value_card);
-					$insert_report.="('$file_id','$number','$pro_id','$tor_id','$ass_id','$value_card','$point','$value_list','$cards_member[$i]','$cards_label[$i]')";
+	
+					$insert_report.="('$file_id','$number','$pro_id','$tor_id','$ass_id','$value_card','$point','$cards_list[$i]','$cards_member[$i]','$cards_label[$i]')";
 					if($i<((count($cards_name))-1)){
 						$insert_report.=",";
 					}
 					$number++;
-				
+				}
 			}
 			mysql_query($insert_report) or die(mysql_error());
 			echo "<script> alert('บันทึกไฟล์เสร็จสิ้น สามารถดูรายละเอียดของไฟล์จากรายการที่ถูดอัพโหลด/'); window.location='index.php?file=detail&file_id=total' </script>";
@@ -301,6 +251,5 @@ if(!empty($_POST["Submit"])){
 	}else{
 		echo "<script> alert('กรุณาเลือกไฟล์ก่อนทำการแปลงไฟล์'); window.location='index.php';</script>";
 	}
-
 }
-?>
+?>	
