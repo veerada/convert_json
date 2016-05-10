@@ -81,6 +81,7 @@
  </script>
 </head>
 <body onload='select_team()'>
+
 <div class="header" >
 	
 </div>
@@ -132,7 +133,9 @@
 ?>
 
 </div>
-
+<div style="width: 100%;">
+                  <div id="canvas_dahs" class="demo-placeholder" style="width: 100%; height:270px;"></div>
+                </div>
 
 </body>
 </html>

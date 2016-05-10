@@ -17,9 +17,25 @@ while (list($member_id,$member_initials,$member_fullname,$loc_name,$team)=mysql_
 					<p style='margin-top:15px'><label >ทีม : </label></p>
 				</div>
 				<div class='col-md-5' style='padding:0px; ' >
-					<p ><div style='width:100%;border:1px solid #ccc;border-radius:3px; padding:6px; margin:-10px;background:#f5f5f5;box-shadow:inset 0px 0.5px 1px #ddd;color:#666;font-size:12px;' >$member_initials</div></p>
-					<p ><input class='form-control input-sm' type='text' name='team[]' value='$team' style='margin-top:20px;margin-left:-40px;width:101px'></p>
-				</div>		
+					<p ><div style='width:100%;border:1px solid #ccc;border-radius:3px; padding:6px; margin:-10px;background:#f5f5f5;box-shadow:inset 0px 0.5px 1px #ddd;color:#666;font-size:12px;' >$member_initials</div></p>";
+				echo "<p ><select class='form-control input-sm' type='text' name='team[]'  style='margin-top:20px;margin-left:-40px;width:101px'>";
+	
+		$query_team=mysql_query("SELECT team FROM members WHERE team!=''  GROUP BY team")or die(mysql_error());
+		while (list($team_members)=mysql_fetch_row($query_team)){
+				if($team==$team_members){
+					echo "<option value='$team_members' selected='selected'>$team_members</option>";
+				}else{
+					echo "<option value='$team_members'>$team_members</option>";		
+				}
+		}
+		if(empty($team)){
+			echo "<option value='' selected='selected'>ไม่อยู่ในทีม</option>";	
+		}
+				echo "</select></p>";
+	
+
+
+	echo "		</div>		
 			</div>
 			<div class='col-md-8'>
 				<div class='col-md-5'>

@@ -8,6 +8,7 @@ if($_POST['sprint_month']=="selectmonth"||$_POST['sprint_year']=="selectyear"||e
 	$chk =" AND (";
 	$status ="";
 	$num_chk=0;
+	$array_status = array();
 	if(!empty($_POST['chk_blacklog'])){
 		$chk_blacklog =$_POST['chk_blacklog'];
 		if($num_chk>0){
@@ -17,7 +18,7 @@ if($_POST['sprint_month']=="selectmonth"||$_POST['sprint_year']=="selectyear"||e
 		$num_chk++;
 		$chk .= "status_card='$chk_blacklog'";
 		$status .= $chk_blacklog;
-
+		array_push($array_status, $_POST['chk_blacklog']);
 	}
 	if(!empty($_POST['chk_checkin'])){
 		$chk_checkin =$_POST['chk_checkin'];
@@ -28,6 +29,7 @@ if($_POST['sprint_month']=="selectmonth"||$_POST['sprint_year']=="selectyear"||e
 		$num_chk++;
 		$chk .= "status_card='$chk_checkin'";
 		$status .= $chk_checkin;
+		array_push($array_status, $_POST['chk_checkin']);
 	}
 	if(!empty($_POST['chk_doing'])){
 		$chk_doing =$_POST['chk_doing'];
@@ -38,6 +40,7 @@ if($_POST['sprint_month']=="selectmonth"||$_POST['sprint_year']=="selectyear"||e
 		$num_chk++;
 		$chk .= "status_card='$chk_doing'";	
 		$status .= $chk_doing;
+		array_push($array_status, $_POST['chk_doing']);
 	}
 	if(!empty($_POST['chk_testing'])){
 		$chk_testing =$_POST['chk_testing'];
@@ -48,6 +51,7 @@ if($_POST['sprint_month']=="selectmonth"||$_POST['sprint_year']=="selectyear"||e
 		$num_chk++;
 		$chk .= "status_card='$chk_testing'";
 		$status .= $chk_testing;
+		array_push($array_status, $_POST['chk_testing']);
 	}
 	if(!empty($_POST['chk_done'])){
 		$chk_done =$_POST['chk_done'];
@@ -58,15 +62,16 @@ if($_POST['sprint_month']=="selectmonth"||$_POST['sprint_year']=="selectyear"||e
 		$num_chk++;
 		$chk .= "status_card='$chk_done'";
 		$status .= $chk_done;
+		array_push($array_status, $_POST['chk_done']);
 	}
 	$chk.=")";
 	if(!empty($_POST['chk_all'])){
 		$chk = "";
 		$status = "Blacklog,Checkin,Doing,Testing,Done";
+		array_push($array_status, $_POST['chk_all']);
 	}
 	$oparator_name =$_POST['oparator_name'];
 
-	
 	echo "<br>";
 	$q_member = mysql_query("SELECT name_ldc,member_fullname FROM members WHERE member_id='$oparator_name'")or die(mysql_error());
 	list($member_name,$member_fullname)=mysql_fetch_row($q_member);
@@ -81,144 +86,55 @@ if($_POST['sprint_month']=="selectmonth"||$_POST['sprint_year']=="selectyear"||e
 	if(empty($file_id)){
 		$file_id = "0";
 	}
-
-	$q_card = mysql_query("SELECT project_id,tor_id,assign_id,component,point_card,status_card FROM report WHERE file_id='$file_id' AND member_fullname='$member_fullname' $chk ORDER BY status_card='Done',status_card='Tester',status_card='Doing',status_card='Checkin',status_card='Blacklog'")or die(mysql_error());
+	echo "<div class='container-fluid'>";
+	$q_card = mysql_query("SELECT project_id,line_id,tor_id,assign_id,component,point_card,status_card FROM report WHERE file_id='$file_id' AND member_fullname='$member_fullname' $chk ORDER BY status_card='Done',status_card='Tester',status_card='Doing',status_card='Checkin',status_card='Blacklog'")or die(mysql_error());
 
 	$rows = mysql_num_rows($q_card);
 	if(empty($rows)){
 		echo "<center><h4><b>ใน sprint นี้สถานะ $status ไม่มีใบงานของ $member_name</b></h4></center><br>";
 	}else{
-		echo "<center><h4><b>สถานะใบงาน $status ของ $member_name</b></h4></center><br>";
-		while (list($project_id,$tor_id,$assign_id,$component,$point_card,$status_card)=mysql_fetch_row($q_card)) {
+		echo "<table>";
+			echo "<tr><td><font size='3'><b><p align='right'>สัปดาห์ที่ : </p></b></font></td><td><font size='3'><p> &nbsp;&nbsp;$_POST[sprint]</p></font></td></tr>";
+			echo "<tr><td><font size='3'><b><p align='right'>เจ้าของใบงาน : </p></b></font></td><td><font size='3'><p> &nbsp;&nbsp;$member_name</p></font></td></tr>";
+			echo "<tr><td><font size='3'><b><p align='right'>สถานะใบงาน : </p></b></font></td><td><font size='3'><p> &nbsp;&nbsp;$status</p></font></td></tr>";
+		echo "</table>";
+	echo "<form action='include/worksheet_pdf.php' method='post' target='_blank'>";
+		echo "<input type='hidden' name='sprint_month' value='$_POST[sprint_month]'>";
+		echo "<input type='hidden' name='sprint_year' value='$_POST[sprint_year]'>";
+		echo "<input type='hidden' name='sprint' value='$_POST[sprint]'>";
+		echo "<input type='hidden' name='oparator_name' value='$_POST[oparator_name]'>";
+		foreach ($array_status as  $value) {
+			echo "<input type='hidden' name='status[]' value='$value'>";
+		}	
+		echo "<p align='right'><button type='submit' class='btn btn-sm btn-danger' ><img src='img/pdf.png' height='20px'> แสดงใบงานทั้งหมด</button></p>";
+	echo "</form>";
+		echo "<table class='table table-bordered'>";
+		$list_status="";
+		while (list($project_id,$line_id,$tor_id,$assign_id,$component,$point_card,$status_card)=mysql_fetch_row($q_card)) {
+			$status_card =empty($status_card)?"":$status_card;
+			if($list_status!=$status_card){
+				echo "<form action='include/worksheet_pdf.php' method='post' target='_blank'>";
+				echo "<input type='hidden' name='sprint_month' value='$_POST[sprint_month]'>";
+				echo "<input type='hidden' name='sprint_year' value='$_POST[sprint_year]'>";
+				echo "<input type='hidden' name='sprint' value='$_POST[sprint]'>";
+				echo "<input type='hidden' name='oparator_name' value='$_POST[oparator_name]'>";
+				echo "<input type='hidden' name='status[]' value='$status_card'>";
+				echo "<tr style='background:#eee'><td><b><font size='4'>สถานะใบงาน</font></b></td><td colspan='3'><font size='4'>$status_card</font></td><td><button type='submit' class='btn btn-sm btn-danger' ><img src='img/pdf.png' height='20px' ><font style='margin-right:21px'> แสดงใบงานของ $status_card</font><a/button></td></tr>";
+				$list_status=$status_card;
+				echo "</form>";
+			}
+			echo "<tr>";
+				echo "<form action='include/worksheet_pdf.php' method='post' target='_blank'>";
+				echo "<input type='hidden' name='file_id' value='$file_id'>";
+				echo "<input type='hidden' name='line_id' value='$line_id'>";
+				echo "<td><b>รหัสโปรเจค</b></td><td>$project_id</td><td><b>รหัสใบงาน</b></td><td>$assign_id</td><td><button type='submit' class='btn btn-sm btn-danger' ><img src='img/pdf.png' height='20px'> แสดงใบงานในรูปแบบ PDF</button></td>";
+				echo "</form>";
+			echo "</tr>";
 			
-?>
-<div class="container-fluid">
-	<div class="col-md-1"></div>
-	<div class="col-md-10">
-	สถานะใบงาน : <?php echo "$status_card";  ?>
-		<table class="table table-bordered"  align="center" border="1" >
-			<tr><td rowspan="2"> <img src="img/logo_small_size.png" /> </td>
-					<td colspan="5" >  Worksheet </td>
-			</tr>
-			<tr>
-					<td colspan="5">Sapphire Research and Development Co., Ltd.</td>
-			</tr>
-			<tr>
-					<td colspan="6"  ><h3> Worksheet </h3></td>
-			</tr>
-			<tr>
-					<td colspan="6"> <h5>Sapphire Research and Development Co., Ltd.</h5></td>
-			</tr>
-			<tr height="20">
-					<td colspan ="3"></td>
-			        <td> Date </td>
-			        <td colspan="2" ></td>
-			</tr>
-			<tr height="20">
-					<td>Worksheet No</td>
-			        <td colspan="2" ><?php echo "$assign_id"; ?></td>
-			        <td>Project Code</td>
-			        <td colspan="2" ><?php echo "$project_id"; ?></td>
-			</tr>
-			<tr>
-					<td>Assign To</td>
-			        <td colspan="2"><?php echo "$member_name"; ?></td>
-			        <td>TOR ID</td>
-			        <td colspan="2"><?php echo "$tor_id"; ?></td>
-			</tr>
-			<tr>
-					<td>Assignment</td>
-			        <td colspan="2"></td>
-			        <td>ผู้ตรวจงาน</td>
-			        <td colspan="2"></td>
-			</tr>
-			<tr>
-					<td>Level (1,2,3,…..9) </td>
-			        <td colspan="2"><?php echo "$point_card"; ?></td>
-			        <td>Module</td>
-			        <td colspan="2"></td>
-			</tr>
-			<tr>
-					<td>System Name</td>
-			        <td colspan="2"></td>
-			        <td rowspan="3">Effect</td>
-			        <td colspan="2" >No effect</td>
-			</tr>
-			<tr>
-					<td colspan="3"></td>
-			        <td colspan="2">effect</td>
-			</tr>
-			<tr>
-					<td>Root Cause</td>
-			        <td colspan="2" height="20"></td>
-			        <td colspan="3" height="20"></td>
-			</tr>
-			<tr>
-					<td >Path/Link (Optional)</td>
-			        <td colspan="2" height="20"></td>  
-			        <td>Line Of Code (LOC)</td>
-			        <td colspan="2" height="20"></td>
-			</tr>
-			<tr>
-					<td colspan="3" height="20"></td>
-			        <td>Process</td>
-			        <td colspan="2" height="20"></td>
-			</tr>
-			<tr>
-					<td colspan="3" height="20"></td>
-			         <td>Element</td>
-			        <td colspan="2" height="20"></td>
-			</tr>
-			<tr>
-					<td colspan="6" al align="center">Planned</td>
-			</tr>
-			<tr>
-					<td width="16.66%">Start Date</td>
-					<td width="16.66%"></td>
-			        <td width="16.66%">Finish Date</td>
-			        <td width="16.66%"></td>
-			        <td width="16.66%">Duration</td>
-			        <td width="16.66%"></td>
-			</tr>
-			<tr>
-					<td colspan="6" align="center">Actual</td>
-			</tr>
-			<tr>
-					<td width="16.66%">Start Date</td>
-					<td width="16.66%"></td>
-			        <td width="16.66%">Finish Date</td>
-			        <td width="16.66%"></td>
-			        <td width="16.66%">Duration</td>
-			        <td width="16.66%"></td>
-			</tr>
-					<td>Description</td>
-					<td colspan="5"><?php echo "$component"; ?></td>
-			</tr>
-
-			</tr>
-					<td>Description of done</td>
-					<td colspan="5"></td>
-			</tr>
-			</tr>
-					<td rowspan="3">ระดับความเข้าใจ</td>
-					<td colspan="2">1. เข้าใจบ้าง ไม่เข้าใจบ้าง</td>
-			      	<td colspan="3">4. เข้าใจเลย</td>
-			</tr>
-			</tr>
-					<td colspan="2">2. เข้าใจและพอทาได้</td>
-			      	<td colspan="3">5. เข้าใจมาก และมีส่วนร่วมในการออกแบบ</td>
-			</tr>
-			</tr>
-					<td colspan="5">3. เข้าใจเป็นส่วนใหญ่</td>
-			</tr>
-		</table>
-	</div>
-</div>
-
-
-<?php
 		}
+		echo "</table>";
 	}
+	echo "</div>";
 }
 
 ?>
